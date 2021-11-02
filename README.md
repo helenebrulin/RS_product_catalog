@@ -108,6 +108,9 @@ SEARCH FOR IT AFTER 20 SECONDS.
 -> discuss ephemeral search : https://redislabs.com/blog/the-case-for-ephemeral-search/ 
 
 
+## Run scripts to add more data
+
+
 ## Sort
 Sort based on price : 
 > FT.SEARCH "idx:movie" "@genre:{Action}"  SORTBY release_year DESC RETURN 2 title release_year
@@ -133,6 +136,4 @@ Sort based on price :
 FT.AGGREGATE idx:movie "*" GROUPBY 1 @genre REDUCE COUNT 0 AS nb_of_movies REDUCE SUM 1 votes AS nb_of_votes REDUCE AVG 1 rating AS avg_rating SORTBY 4 @avg_rating DESC @nb_of_votes DESC
 
 
-## OTHER
-- show stem search, autocomplete
-
+## Show real-time recommendation engine
