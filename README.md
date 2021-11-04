@@ -24,15 +24,15 @@ Let's do vendor hashes with coordinates as well :
 - location
 
 
->HSET product:1 name "Kitchen Table" description "Small wooden table for all your appliances." category "Furniture" brand "Ikea" vendor_id 1 delivery "Home" price 50 quantity 1 
+>HSET product:1 name "Kitchen Table" description "Small wooden table for all your appliances." category "Furniture" brand "Ikea" vendor_id 1 delivery "Home" price 50 quantity 1 comments 160
 
->HSET product:2 name "Telescope" description "To infinity and beyond" category "Astronomy" brand "Sky" vendor_id 2 delivery "Home" price 200 quantity 0
+>HSET product:2 name "Telescope" description "To infinity and beyond" category "Astronomy" brand "Sky" vendor_id 2 delivery "Home" price 200 quantity 0 comments 855
 
->HSET product:3 name "Plates" description "Sold by 6. For beautiful tables" category "Kitchenware" brand "Ceramica" vendor_id 2 delivery "Collect" price 165 quantity 5
+>HSET product:3 name "Plates" description "Sold by 6. For beautiful tables" category "Kitchenware" brand "Ceramica" vendor_id 2 delivery "Collect" price 165 quantity 5 comments 4
 
->HSET product:4 name "Macbook Pro" description "Our best selling computer" category "Computers" brand "Apple" vendor_id 3 delivery "Home" price 1000 quantity 100
+>HSET product:4 name "Macbook Pro" description "Our best selling computer" category "Computers" brand "Apple" vendor_id 3 delivery "Home" price 1000 quantity 100 comments 999
 
-HSET product:5 name "HP Computer" description "I'm a windows computer." category "Computers" brand "HP Computers" vendor_id 3 delivery "Collect" price 300 quantity 50
+HSET product:5 name "HP Computer" description "I'm a windows computer." category "Computers" brand "HP Computers" vendor_id 3 delivery "Collect" price 300 quantity 50 comments 753
 
 >HSET vendor:1 name "Ikea" location "-66.94198,-34.15366"
 >HSET vendor:2 name "HomeDepot" location "103.79232,34.26015"
@@ -41,7 +41,7 @@ HSET product:5 name "HP Computer" description "I'm a windows computer." category
 
 ## Create indexes
 
-> FT.CREATE idx:product ON hash PREFIX 1 "product:" SCHEMA name TEXT SORTABLE description TEXT SORTABLE category TAG SORTABLE brand TEXT SORTABLE vendor_id NUMERIC SORTABLE delivery TAG SORTABLE price NUMERIC SORTABLE quantity NUMERIC SORTABLE
+> FT.CREATE idx:product ON hash PREFIX 1 "product:" SCHEMA name TEXT SORTABLE description TEXT SORTABLE category TAG SORTABLE brand TEXT SORTABLE vendor_id NUMERIC SORTABLE delivery TAG SORTABLE price NUMERIC SORTABLE quantity NUMERIC SORTABLE comments NUMERIC SORTABLE
 
 > FT.CREATE idx:vendor ON hash PREFIX 1 "vendor:" SCHEMA name TEXT SORTABLE location GEO SORTABLE
 
@@ -93,9 +93,9 @@ Combine:
 >FT.SEARCH idx:product "@price:[50 200]" RETURN 3 name vendor_id price
 >FT.SEARCH idx:product "@price:[50 (200]" RETURN 3 name vendor_id price # exclude a value
 
-## Sort !!!!!!!!!!
+## Sort
 Sort based on price : 
-> FT.SEARCH idx:product SORTBY price DESC RETURN 2 name price
+> FT.SEARCH idx:product * SORTBY price DESC RETURN 2 name price
 > Note: The field used in the SORTBY should be part of the index schema and defined as SORTABLE.
 
 
@@ -131,21 +131,28 @@ Now let's say we want to find the closest vendor to our user
 > FT.AGGREGATE idx:vendor * LOAD 2 @name @location APPLY "geodistance(@location, 134.811767,51.6716705)" AS dist SORTBY 2 @dist ASC LIMIT 0 1
 
 
-## Other interesting aggregations
+## Other interesting aggregations 
 - nb of product by vendor
 > FT.AGGREGATE "idx:product" "*" GROUPBY 1 @vendor_id REDUCE COUNT 0 AS nb_of_products
 
-- nb of product by vendor and sort by quantity
-> FT.AGGREGATE "idx:product" "*" GROUPBY 1 @vendor_id REDUCE COUNT 0 AS nb_of_products SORTBY 2 quantity DESC 
-
-- SAME AS ABOVE with a condition of quantity !!!! CHANGE THIS
-> FT.AGGREGATE idx:product "*" GROUPBY 1 @country  REDUCE COUNT 0 AS nb_of_users  FILTER "@country!='china' && @nb_of_users > 100" SORTBY 2 @nb_of_users DESC
-
-HINCRBY product quantity 2
+- nb of product by vendor and sort by nb
+> FT.AGGREGATE "idx:product" "*" GROUPBY 1 @vendor_id REDUCE COUNT 0 AS nb_of_products SORTBY 2 @nb_of_products DESC 
 
 - nb of product by category with total quantity and average price
 FT.AGGREGATE idx:product "*" GROUPBY 1 @category REDUCE COUNT 0 AS nb_of_products REDUCE SUM 1 quantity AS total_quantity REDUCE AVG 1 price AS avg_price SORTBY 4 @avg_price DESC @total_quantity DESC
 
+- Using filter
+> FT.AGGREGATE idx:product * GROUPBY 1 @category REDUCE COUNT 0 AS nb_of_products FILTER "@category!='computers' && @nb_of_products >= 1" SORTBY 2 @nb_of_products DESC
+
+- Now adding the notion of quantity 
+> FT.AGGREGATE idx:product * GROUPBY 1 @category REDUCE COUNT 0 AS nb_of_products REDUCE SUM 1 quantity AS total_quantity FILTER "@category!='computers' && @total_quantity >= 1" SORTBY 2 @total_quantity DESC
+
+HINCRBY product:2 quantity 2 and show telescope is now here, with quantity 2
+
+
+
+
+!!! Add votes stuff : https://github.com/RediSearch/redisearch-getting-started/blob/master/docs/008-aggregation.md
 
 ## End
 Open to slide with features and talk maybe about TTL and ephemeral search
